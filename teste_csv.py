@@ -1,8 +1,10 @@
+import streamlit as st
 import os
 import re
 import csv
 
-# Função para carregar o dicionário de um arquivo CSV com hierarquia em colunas
+# --- Suas funções existentes (inalteradas) ---
+
 def carregar_dicionario_csv_expandido(nome_arquivo):
     termos = []
     mapa_hierarquia = {}
@@ -11,6 +13,7 @@ def carregar_dicionario_csv_expandido(nome_arquivo):
             reader = csv.DictReader(f)
             for row in reader:
                 hierarquia_completa = []
+                # Assumindo que o seu CSV tenha colunas termo1, termo2, etc.
                 for i in range(3, 7): # Ajuste este range conforme o número de colunas
                     coluna = f'termo{i}'
                     if coluna in row and row[coluna]:
@@ -32,14 +35,13 @@ def carregar_dicionario_csv_expandido(nome_arquivo):
                         mapa_hierarquia[termo_pai] = []
                     mapa_hierarquia[termo_pai].append(termo_especifico)
     except FileNotFoundError:
-        print(f"Erro: O arquivo '{nome_arquivo}' não foi encontrado.")
+        st.error(f"Erro: O arquivo '{nome_arquivo}' não foi encontrado.")
         return [], {}
     except Exception as e:
-        print(f"Ocorreu um erro ao carregar o dicionário: {e}")
+        st.error(f"Ocorreu um erro ao carregar o dicionário: {e}")
         return [], {}
     return termos, mapa_hierarquia
 
-# Função para aplicar a lógica de hierarquia nos termos sugeridos
 def aplicar_logica_hierarquia(termos_sugeridos, mapa_hierarquia):
     termos_finais = set(termos_sugeridos)
     mapa_inverso_hierarquia = {}
@@ -55,44 +57,42 @@ def aplicar_logica_hierarquia(termos_sugeridos, mapa_hierarquia):
     termos_finais = termos_finais - termos_a_remover
     return list(termos_finais)
 
-# Mock da função que gera termos, para simular a resposta da IA
 def gerar_termos_llm_mock(texto_original, termos_dicionario, num_termos):
-    print(f"Simulando sugestão de termos para o texto: '{texto_original[:40]}...'")
-    # Simula um cenário onde termos genéricos e específicos são sugeridos
+    st.info(f"Simulando sugestão de termos para o texto: '{texto_original[:40]}...'")
     if "hospitalização" in texto_original.lower():
         return ["Saúde Pública", "Administração em Saúde", "Hospitalização"]
-    # Simula um cenário onde apenas termos específicos são sugeridos
     if "ensino superior" in texto_original.lower():
         return ["Ensino Superior"]
     return ["Política Pública"]
 
-# --- Bloco de teste principal ---
-if __name__ == "__main__":
+# --- Bloco de código para o Streamlit ---
+st.title("Teste de Carregamento de Dicionário")
+
+arquivo_csv = "saude_dicionario.csv"
+termo_dicionario_csv, mapa_hierarquia_csv = carregar_dicionario_csv_expandido(arquivo_csv)
+
+if not termo_dicionario_csv:
+    st.warning("Teste não pode continuar: Dicionário não foi carregado.")
+else:
+    st.success(f"Dicionário CSV carregado com {len(termo_dicionario_csv)} termos.")
     
-    # 1. Carrega o dicionário
-    arquivo_csv = "saude_dicionario.csv"
-    termo_dicionario_csv, mapa_hierarquia_csv = carregar_dicionario_csv_expandido(arquivo_csv)
+    st.subheader("Termos carregados do CSV:")
+    st.write(termo_dicionario_csv)
     
-    if not termo_dicionario_csv:
-        print("Teste não pode continuar: Dicionário não foi carregado.")
-    else:
-        print(f"Dicionário CSV carregado com {len(termo_dicionario_csv)} termos.")
-        
-        # 2. Simula o texto de entrada do usuário
-        texto_proposicao_1 = "A proposição visa tratar de temas de hospitalização."
-        
-        # 3. Gera os termos (simulando a IA)
-        termos_sugeridos_brutos_1 = gerar_termos_llm_mock(texto_proposicao_1, termo_dicionario_csv, 5)
-        print(f"Termos sugeridos pela IA (brutos): {termos_sugeridos_brutos_1}")
-        
-        # 4. Aplica a lógica de hierarquia
-        termos_finais_1 = aplicar_logica_hierarquia(termos_sugeridos_brutos_1, mapa_hierarquia_csv)
-        print(f"Termos finais após a hierarquia: {termos_finais_1}\n")
-        
-        # --- Segundo cenário de teste ---
-        texto_proposicao_2 = "A presente lei aborda o ensino superior."
-        termos_sugeridos_brutos_2 = gerar_termos_llm_mock(texto_proposicao_2, termo_dicionario_csv, 5)
-        print(f"Termos sugeridos pela IA (brutos): {termos_sugeridos_brutos_2}")
-        
-        termos_finais_2 = aplicar_logica_hierarquia(termos_sugeridos_brutos_2, mapa_hierarquia_csv)
-        print(f"Termos finais após a hierarquia: {termos_finais_2}\n")
+    st.subheader("Mapa de hierarquia criado:")
+    st.write(mapa_hierarquia_csv)
+
+    # Simulação do fluxo de trabalho
+    texto_proposicao = st.text_area("Digite um texto para testar a sugestão de termos:", "A proposição visa tratar de temas de hospitalização.")
+    num_termos = st.slider("Número de termos a sugerir:", 1, 10, 5)
+
+    if st.button("Gerar Termos"):
+        with st.spinner('Gerando...'):
+            termos_sugeridos_brutos = gerar_termos_llm_mock(texto_proposicao, termo_dicionario_csv, num_termos)
+            
+            st.write("---")
+            st.subheader("Resultado do Teste")
+            st.write(f"Termos sugeridos pela IA (brutos): **{termos_sugeridos_brutos}**")
+            
+            termos_finais = aplicar_logica_hierarquia(termos_sugeridos_brutos, mapa_hierarquia_csv)
+            st.write(f"Termos finais após a lógica de hierarquia: **{termos_finais}**")
