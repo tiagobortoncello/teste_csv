@@ -5,9 +5,12 @@ import csv
 import requests
 import json
 
-# --- Suas funções existentes (inalteradas) ---
+# --- Funções para carregar e processar o dicionário ---
 
 def carregar_dicionario_csv_expandido(nome_arquivo):
+    """
+    Carrega os termos e a hierarquia de um arquivo CSV.
+    """
     termos = []
     mapa_hierarquia = {}
     try:
@@ -15,8 +18,7 @@ def carregar_dicionario_csv_expandido(nome_arquivo):
             reader = csv.DictReader(f)
             for row in reader:
                 hierarquia_completa = []
-                # Assumindo que o seu CSV tenha colunas termo1, termo2, etc.
-                for i in range(3, 7): # Ajuste este range conforme o número de colunas
+                for i in range(3, 7):
                     coluna = f'termo{i}'
                     if coluna in row and row[coluna]:
                         hierarquia_completa.append(row[coluna].strip())
@@ -45,6 +47,9 @@ def carregar_dicionario_csv_expandido(nome_arquivo):
     return termos, mapa_hierarquia
 
 def aplicar_logica_hierarquia(termos_sugeridos, mapa_hierarquia):
+    """
+    Remove termos genéricos se um termo mais específico da mesma hierarquia estiver presente.
+    """
     termos_finais = set(termos_sugeridos)
     mapa_inverso_hierarquia = {}
     for pai, filhos in mapa_hierarquia.items():
@@ -59,13 +64,11 @@ def aplicar_logica_hierarquia(termos_sugeridos, mapa_hierarquia):
     termos_finais = termos_finais - termos_a_remover
     return list(termos_finais)
 
-# --- NOVAS FUNÇÕES do Código 2 para usar o Gemini ---
+# --- Funções para interagir com o Gemini API ---
 
 def get_api_key():
     """
-    Tenta obter a chave de API de diferentes fontes:
-    1. Streamlit secrets
-    2. Variáveis de ambiente
+    Obtém a chave de API do Google de forma segura.
     """
     api_key = st.secrets.get("GOOGLE_API_KEY")
     if api_key:
@@ -76,8 +79,8 @@ def get_api_key():
 
 def gerar_termos_llm(texto_original, termos_dicionario, num_termos):
     """
-    Gera termos de indexação a partir do texto original, utilizando um dicionário de termos.
-    A resposta é esperada em formato de lista JSON.
+    Gera termos de indexação usando o Gemini e um dicionário de termos.
+    A resposta é formatada como uma lista JSON.
     """
     api_key = get_api_key()
     
@@ -131,9 +134,11 @@ def gerar_termos_llm(texto_original, termos_dicionario, num_termos):
         
     return []
 
-# --- Bloco de código para o Streamlit (modificado) ---
+# --- Bloco de código do Streamlit ---
+
 st.title("Teste de Carregamento de Dicionário")
 
+# A linha abaixo foi ajustada para usar o nome de arquivo correto
 arquivo_csv = "saude_dicionario.csv"
 termo_dicionario_csv, mapa_hierarquia_csv = carregar_dicionario_csv_expandido(arquivo_csv)
 
@@ -148,13 +153,11 @@ else:
     st.subheader("Mapa de hierarquia criado:")
     st.write(mapa_hierarquia_csv)
 
-    # Simulação do fluxo de trabalho
     texto_proposicao = st.text_area("Digite um texto para testar a sugestão de termos:", "A proposição visa tratar de temas de hospitalização.")
     num_termos = st.slider("Número de termos a sugerir:", 1, 10, 5)
 
     if st.button("Gerar Termos"):
         with st.spinner('Gerando...'):
-            # Substituição da função `gerar_termos_llm_mock` pela real `gerar_termos_llm`
             termos_sugeridos_brutos = gerar_termos_llm(texto_proposicao, termo_dicionario_csv, num_termos)
             
             st.write("---")
@@ -165,10 +168,5 @@ else:
             else:
                 st.write(f"Termos sugeridos pela IA (brutos): **{termos_sugeridos_brutos}**")
                 
-                # Regra para adicionar "Política Pública" automaticamente
-                if re.search(r"institui (?:a|o) (?:política|programa) estadual|cria (?:a|o) (?:política|programa) estadual", texto_proposicao, re.IGNORECASE):
-                    if "Política Pública" not in termos_sugeridos_brutos:
-                        termos_sugeridos_brutos.append("Política Pública")
-
                 termos_finais = aplicar_logica_hierarquia(termos_sugeridos_brutos, mapa_hierarquia_csv)
                 st.write(f"Termos finais após a lógica de hierarquia: **{termos_finais}**")
