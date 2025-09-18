@@ -70,7 +70,7 @@ def gerar_termos_llm_mock(texto_original, termos_dicionario, num_termos):
 if __name__ == "__main__":
     
     # 1. Carrega o dicionário
-    arquivo_csv = "dicionario_termos_expandido.csv"
+    arquivo_csv = "saude_dicionario.csv"
     termo_dicionario_csv, mapa_hierarquia_csv = carregar_dicionario_csv_expandido(arquivo_csv)
     
     if not termo_dicionario_csv:
